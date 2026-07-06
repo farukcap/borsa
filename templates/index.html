@@ -3,129 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pure Math Crypto Pattern Analyzer</title>
+    <title>Quantum Crypto Math Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        body { background-color: #0d0e12; color: #e4e6eb; font-family: system-ui, -apple-system, sans-serif; }
-        .card { background-color: #161820; border: 1px solid #292c3d; border-radius: 12px; color: #fff; }
-        .border-prediction { border-left: 5px solid #ffb300 !important; }
-        .badge-bull { background-color: #00b0ff; color: #fff; }
-        .badge-bear { background-color: #ff5252; color: #fff; }
-        .st-confirmed { color: #00e676; font-weight: bold; }
-        .st-fail { color: #ff5252; font-weight: bold; }
-        .st-not { color: #ffb300; font-weight: bold; }
+        body { background-color: #060709; color: #d1d4dc; font-family: monospace; }
+        .card { background-color: #0f111a; border: 1px solid #1f222e; border-radius: 8px; color: #fff; }
+        .border-target { border-left: 4px solid #00e676 !important; }
+        .badge-bull { background-color: #26a69a; }
+        .badge-bear { background-color: #ef5350; }
+        #tv-chart { width: 100%; height: 420px; border-radius: 4px; overflow: hidden; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container py-5">
-    <div class="text-center mb-5">
-        <h2 class="fw-bold text-white">Algorithmic Candlestick Engine</h2>
-        <p class="text-muted">Gelişmiş Matriks Formasyon ve Yaşam Döngüsü Matematik Motoru</p>
+<div class="container py-4">
+    <div class="mb-4">
+        <h4 class="fw-bold text-white">📡 MATRIKS PURE MATHEMATICS ENGINE v3</h4>
+        <p class="text-muted small">Hazır Kütüphanesiz Doğrudan Geometrik Mum Oran Analizi</p>
     </div>
 
-    <div class="row g-4">
-        <div class="col-lg-4">
-            <div class="card p-4 shadow-sm">
-                <h5 class="mb-4 text-white-50">Sorgu Parametreleri</h5>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card p-4">
                 <div class="mb-3">
-                    <label class="form-label text-secondary">Kripto Varlık (Örn: BTCUSDT)</label>
-                    <input type="text" id="symbol" class="form-control bg-dark text-white border-secondary" value="BTCUSDT">
+                    <label class="form-label small text-muted">Kripto Para Sembolü</label>
+                    <input type="text" id="symbol" class="form-control bg-dark text-white border-secondary fw-bold" value="ETHUSDT">
+                    <span class="text-muted text-uppercase d-block mt-1" style="font-size:10px;">Not: Sadece "ETH" veya "SOL" yazabilirsiniz.</span>
                 </div>
                 <div class="mb-4">
-                    <label class="form-label text-secondary">Zaman Periyodu</label>
+                    <label class="form-label small text-muted">Zaman Periyodu</label>
                     <select id="interval" class="form-select bg-dark text-white border-secondary">
-                        <option value="15m">15 Dakikalık Grafik</option>
-                        <option value="4h" selected>4 Saatlik Grafik</option>
+                        <option value="15m">15 Dakika (Kısa Vade)</option>
+                        <option value="4h" selected>4 Saat (1-2 Günlük Trend)</option>
                     </select>
                 </div>
-                <button onclick="runEngine()" class="btn btn-primary w-100 fw-bold py-2">Matematik Motorunu Çalıştır</button>
+                <button onclick="calculateMetrics()" class="btn btn-primary w-100 fw-bold">Algoritmayı Çalıştır</button>
             </div>
         </div>
 
-        <div class="col-lg-8">
-            <div class="card p-4 mb-4 border-prediction shadow-sm">
-                <h6 class="text-warning text-uppercase tracking-wider">🔮 1-2 Günlük Trend Tahmini</h6>
-                <div id="projection-output" class="fs-5 mt-2 text-light">Analiz başlatılmadı. Lütfen sol panelden bir varlık seçip motoru çalıştırın.</div>
+        <div class="col-md-8">
+            <div class="card p-3 mb-3 border-target">
+                <span class="text-warning small fw-bold">🔮 1-2 GÜNLÜK MATEMATİKSEL TAHMİN PROJEKSİYONU</span>
+                <div id="projection-text" class="fs-6 mt-1 text-white">Analiz başlatılmadı. Sistem emir bekliyor.</div>
             </div>
 
-            <div class="card p-4 shadow-sm">
-                <h5 class="mb-3 text-white-50">Formasyon Algılama Geçmişi</h5>
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>Tarih / Saat</th>
-                                <th>Formasyon Adı</th>
-                                <th>Yön</th>
-                                <th>Tetik Fiyatı</th>
-                                <th>Matriks Durumu</th>
-                            </tr>
-                        </thead>
-                        <tbody id="results-tbody">
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">Veri bulunmuyor.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="card p-3">
+                <span class="text-muted small mb-2 d-block">📊 CANLI TRADINGVIEW GRAFİĞİ VE OTOMATİK SEVİYE ÇİZİMLERİ</span>
+                <div id="tv-chart"></div>
             </div>
+        </div>
+    </div>
+
+    <div class="card p-4 mt-3">
+        <span class="text-muted small mb-3 d-block">📋 TESPİT EDİLEN FORMASYONLARIN GEÇMİŞ GÜNLÜĞÜ</span>
+        <div class="table-responsive">
+            <table class="table table-dark table-hover small">
+                <thead>
+                    <tr>
+                        <th>Zaman</th>
+                        <th>Formasyon</th>
+                        <th>Tip</th>
+                        <th>Tetik Fiyatı</th>
+                        <th>Teyit Seviyesi</th>
+                        <th>Stop-Loss</th>
+                        <th>Durum (Status)</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-tbody">
+                    <tr><td colspan="7" class="text-center text-muted">Veri akışı bekleniyor...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
-function runEngine() {
+let tvChart = null;
+let candleSeries = null;
+let tLine = null;
+let sLine = null;
+
+function initTvChart() {
+    const chartDiv = document.getElementById('tv-chart');
+    chartDiv.innerHTML = '';
+    
+    tvChart = LightweightCharts.createChart(chartDiv, {
+        layout: { backgroundColor: '#0f111a', textColor: '#848e9c' },
+        grid: { vertLines: { color: '#161a25' }, horzLines: { color: '#161a25' } },
+        timeScale: { timeVisible: true, borderColor: '#2b2f3a' },
+        rightPriceScale: { borderColor: '#2b2f3a' }
+    });
+
+    candleSeries = tvChart.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350',
+        borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350'
+    });
+}
+
+function calculateMetrics() {
     const symbol = document.getElementById('symbol').value;
     const interval = document.getElementById('interval').value;
-    const tbody = document.getElementById('results-tbody');
-    const projection = document.getElementById('projection-output');
+    const tbody = document.getElementById('logs-tbody');
+    const proj = document.getElementById('projection-text');
 
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-info py-4">Saf matematiksel formüller çalıştırılıyor...</td></tr>`;
-    projection.innerHTML = "Hesaplanıyor...";
+    if(!tvChart) initTvChart();
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-warning">Matematiksel denklemler çözülüyor...</td></tr>`;
 
     fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol: symbol, interval: interval })
     })
-    .then(res => res.json())
+    .then(r => r.json())
     .then(data => {
         if(!data.success) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${data.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${data.message}</td></tr>`;
             return;
         }
 
-        projection.innerText = data.projection;
+        proj.innerText = data.projection;
+        candleSeries.setData(data.candles);
         tbody.innerHTML = "";
 
-        if(data.patterns.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Belirtilen mum aralığında geçerli formasyon teyidi yakalanamadı.</td></tr>`;
-            return;
+        if(data.patterns.length > 0) {
+            const last = data.patterns[0];
+            
+            // Eski çizgileri grafikten siliyoruz
+            if(tLine) candleSeries.removePriceLine(tLine);
+            if(sLine) candleSeries.removePriceLine(sLine);
+
+            // Teyit (Target) Çizgisi çiziliyor
+            tLine = candleSeries.createPriceLine({
+                price: last.target_level, color: '#00e676', lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid, title: 'TEYİT'
+            });
+
+            // Stop Çizgisi çiziliyor
+            sLine = candleSeries.createPriceLine({
+                price: last.stop_level, color: '#ff5252', lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid, title: 'STOPLOSS'
+            });
+
+            data.patterns.forEach(p => {
+                let badge = p.type === 'Bullish' ? `<span class="badge badge-bull">Boğa</span>` : `<span class="badge badge-bear">Ayı</span>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.time_str}</td>
+                        <td class="text-warning">${p.pattern}</td>
+                        <td>${badge}</td>
+                        <td>${p.trigger_price.toFixed(4)}</td>
+                        <td class="text-success">${p.target_level.toFixed(4)}</td>
+                        <td class="text-danger">${p.stop_level.toFixed(4)}</td>
+                        <td>${p.status}</td>
+                    </tr>
+                `;
+            });
+        } else {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Onay aralığında formasyon bulunamadı.</td></tr>`;
         }
-
-        data.patterns.forEach(p => {
-            let badge = p.type === 'Bullish' ? `<span class="badge badge-bull">Boğa</span>` : `<span class="badge badge-bear">Ayı</span>`;
-            let statusSpan = '';
-            if(p.status === 'Confirmed') statusSpan = `<span class="st-confirmed">Confirmed</span>`;
-            else if(p.status === 'Confirmed & Fail') statusSpan = `<span class="st-fail">Confirmed & Fail</span>`;
-            else statusSpan = `<span class="st-not">Not Confirmed</span>`;
-
-            tbody.innerHTML += `
-                <tr>
-                    <td>${p.time}</td>
-                    <td>${p.pattern}</td>
-                    <td>${badge}</td>
-                    <td>${p.trigger_price}</td>
-                    <td>${statusSpan}</td>
-                </tr>
-            `;
-        });
-    })
-    .catch(() => {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Uzak sunucu hatası. Ayarları kontrol edin.</td></tr>`;
     });
 }
+
+window.onload = initTvChart;
 </script>
 </body>
 </html>
