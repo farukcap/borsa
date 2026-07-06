@@ -1,14 +1,12 @@
 import os
 import requests
 import pandas as pd
-import numpy as np
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# Binance'den Mum Verisi Çekme Fonksiyonu
-def get_binance_klines(symbol, interval, limit=100):
-    url = f"https://api.binance.com/api/v3/klines"
+def get_binance_klines(symbol, interval, limit=150):
+    url = "https://api.binance.com/api/v3/klines"
     params = {"symbol": symbol.upper(), "interval": interval, "limit": limit}
     try:
         response = requests.get(url, params=params)
@@ -18,147 +16,182 @@ def get_binance_klines(symbol, interval, limit=100):
             'close_time', 'quote_asset_volume', 'number_of_trades',
             'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
         ])
-        # Sayısal değerlere dönüştürme
-        for col in ['open', 'high', 'low', 'close', 'volume']:
+        for col in ['open', 'high', 'low', 'close']:
             df[col] = df[col].astype(float)
         return df
-    except Exception as e:
+    except Exception:
         return None
 
-# Matematiksel Formasyon Analiz Motoru
-def analyze_patterns(df, confirm_bars=3):
+def analyze_patterns_pure_math(df, confirm_bar_count=3):
     results = []
-    if df is None or len(df) < 20:
+    if df is None or len(df) < 30:
         return results
 
-    # Mum özelliklerini hesapla
+    # --- SAF MATEMATİKSEL MUMPİKSEL ÖZELLİKLER ---
+    # Gövde Boyutları, Yönleri ve Gölgeler
     df['body'] = (df['close'] - df['open']).abs()
-    df['direction'] = np.where(df['close'] >= df['open'], 'white', 'black')
+    df['dir'] = 'white'
+    df.loc[df['close'] < df['open'], 'dir'] = 'black'
+    
     df['high_shadow'] = df['high'] - df[['open', 'close']].max(axis=1)
     df['low_shadow'] = df[['open', 'close']].min(axis=1) - df['low']
     df['total_range'] = df['high'] - df['low']
+    
+    # Doji Tanımı: Gövde toplam hareketin %10'undan küçükse
     df['is_doji'] = df['body'] <= (df['total_range'] * 0.1)
-
-    # Trend bulma (Basit hareketli ortalama üstü/altı)
+    
+    # Trend Tespiti (Saf Matematik: Son 20 mumun aritmetik ortalaması)
     df['ma20'] = df['close'].rolling(20).mean()
 
-    # Son mumları incele (En son tamamlanan mum endeksi: i)
-    # Son mum henüz kapanmadığı için i = len(df) - 1 - confirm_bars noktasından formasyon arayıp sonraki barları kontrol edeceğiz
-    for i in range(15, len(df) - confirm_bars):
+    # Formasyon Tarama Döngüsü
+    # i: Formasyonun bittiği / sinyalin üretildiği mumun endeksi
+    for i in range(5, len(df) - confirm_bar_count):
+        p2 = df.iloc[i-2] # İki önceki mum
+        p1 = df.iloc[i-1] # Bir önceki mum
+        c  = df.iloc[i]   # Mevcut mum (Sinyal mumu)
+        
         pattern_name = None
-        pattern_type = None  # Bullish / Bearish
-        trigger_idx = i
-        
-        # O anki mumlar
-        c1 = df.iloc[i]     # Formasyonun ana veya son mumu
-        p1 = df.iloc[i-1]   # Bir önceki mum
-        
-        # 1. BULLISH HAMMER (Çekiç Boğa) - [Doküman Sayfa 6]
-        if c1['low_shadow'] > (c1['body'] * 2) and c1['high_shadow'] < (c1['body'] * 0.5) and c1['close'] < c1['ma20']:
+        pattern_type = None # 'Bullish' veya 'Bearish'
+        target_level = 0.0
+        stop_level = 0.0
+
+        # --- 1. BULLISH HAMMER (Çekiç Boğa) [Sayfa 6] ---
+        # Koşul: Düşüş trendinde, alt gölge gövdenin en az 2 katı, üst gölge çok küçük [Sayfa 16, 17].
+        if c['close'] < c['ma20'] and c['low_shadow'] >= (c['body'] * 2) and c['high_shadow'] <= (c['body'] * 0.5):
             pattern_name = "Bullish Hammer (Çekiç Boğa)"
             pattern_type = "Bullish"
-            [span_6](start_span)target_level = max(c1['open'], c1['close']) # Teyit: Gövde üst sınırı[span_6](end_span)
-            [span_7](start_span)stop_level = c1['low'] # Stop: En düşük seviye[span_7](end_span)
+            target_level = max(c['open'], c['close']) # Teyit: Gövde üst sınırı [Sayfa 18]
+            stop_level = c['low'] # Stop: Barın gördüğü en düşük [Sayfa 18]
 
-        # 2. BEARISH HANGING MAN (Asılı Adam Ayı) - [Doküman Sayfa 16]
-        elif c1['low_shadow'] > (c1['body'] * 2) and c1['high_shadow'] < (c1['body'] * 0.5) and c1['close'] > c1['ma20']:
-            pattern_name = "Bearish Hanging Man (Asılı Adam Ayı)"
-            pattern_type = "Bearish"
-            [span_8](start_span)target_level = c1['low'] - (c1['low_shadow'] / 2) # Teyit: Alt gölge orta noktası[span_8](end_span)
-            [span_9](start_span)stop_level = max(p1['high'], c1['high']) # Stop: Son iki barın en yükseği[span_9](end_span)
+        # --- 2. BULLISH BELT HOLD (Belden Tutma Boğa) [Sayfa 6] ---
+        # Koşul: Açılış en düşük değere eşit (veya çok yakın), var olan düşüş trendine karşı güçlü yükseliş [Sayfa 19, 20].
+        elif c['close'] < c['ma20'] and c['dir'] == 'white' and c['low_shadow'] <= (c['body'] * 0.05) and c['high_shadow'] <= (c['body'] * 0.2):
+            pattern_name = "Bullish Belt Hold (Belden Tutma Boğa)"
+            pattern_type = "Bullish"
+            target_level = c['close'] # Teyit: Barın kapanış fiyatı [Sayfa 20]
+            stop_level = c['low'] # Stop: Barın gördüğü en düşük [Sayfa 21]
 
-        # 3. BULLISH ENGULFING (Yutan Boğa) - [Doküman Sayfa 6]
-        elif p1['direction'] == 'black' and c1['direction'] == 'white' and c1['open'] <= p1['close'] and c1['close'] > p1['open']:
+        # --- 3. BULLISH ENGULFING (Yutan Boğa) [Sayfa 6] ---
+        # Koşul: Önceki siyah gövdeyi tamamen içine alan büyük beyaz gövde [Sayfa 22].
+        elif p1['dir'] == 'black' and c['dir'] == 'white' and c['open'] <= p1['close'] and c['close'] > p1['open']:
             pattern_name = "Bullish Engulfing (Yutan Boğa)"
             pattern_type = "Bullish"
-            [span_10](start_span)target_level = c1['close'] # Teyit: Son bar kapanışı[span_10](end_span)
-            [span_11](start_span)stop_level = c1['low'] # Stop: Son barın en düşüğü[span_11](end_span)
+            target_level = c['close'] # Teyit: Son barın kapanış fiyatı [Sayfa 23]
+            stop_level = c['low'] # Stop: Son barın gördüğü en düşük [Sayfa 23]
 
-        # 4. BEARISH ENGULFING (Yutan Ayı) - [Doküman Sayfa 17]
-        elif p1['direction'] == 'white' and c1['direction'] == 'black' and c1['open'] >= p1['close'] and c1['close'] < p1['open']:
-            pattern_name = "Bearish Engulfing (Yutan Ayı)"
-            pattern_type = "Bearish"
-            [span_12](start_span)target_level = c1['close'] # Teyit: Son bar kapanışı[span_12](end_span)
-            [span_13](start_span)stop_level = c1['high'] # Stop: Son barın en yükseği[span_13](end_span)
-
-        # 5. BULLISH HARAMI (Hamile Boğa) - [Doküman Sayfa 7]
-        elif p1['direction'] == 'black' and c1['direction'] == 'white' and c1['open'] > p1['close'] and c1['close'] < p1['open'] and c1['body'] < p1['body']:
+        # --- 4. BULLISH HARAMI (Hamile Boğa) [Sayfa 7] ---
+        # Koşul: Siyah gövdenin tamamen içinde kalan küçük beyaz gövde [Sayfa 24].
+        elif p1['dir'] == 'black' and c['dir'] == 'white' and c['open'] > p1['close'] and c['close'] < p1['open'] and c['body'] < p1['body']:
             pattern_name = "Bullish Harami (Hamile Boğa)"
             pattern_type = "Bullish"
-            p1_mid = p1['close'] + (p1['body'] / 2)
-            [span_14](start_span)target_level = max(c1['close'], p1_mid) # Teyit algoritması[span_14](end_span)
-            [span_15](start_span)stop_level = min(p1['low'], c1['low']) # Stop algoritması[span_15](end_span)
+            p1_mid = p1['close'] + ((p1['open'] - p1['close']) / 2)
+            target_level = max(c['close'], p1_mid) # Teyit: İkinci kapanış ile ilk gövde orta noktasından büyük olanı [Sayfa 25]
+            stop_level = min(p1['low'], c['low']) # Stop: İki barın düşük değerlerinden daha düşük olanı [Sayfa 26]
 
-        # [span_16](start_span)Eğer bir formasyon tespit edildiyse, durumunu (Life Cycle) kontrol et[span_16](end_span)
+        # --- 5. BEARISH HANGING MAN (Asılı Adam Ayı) [Sayfa 16] ---
+        # Koşul: Yükseliş trendinde, üstte küçük gövde, altta uzun gölge [Sayfa 79].
+        elif c['close'] > c['ma20'] and c['low_shadow'] >= (c['body'] * 2) and c['high_shadow'] <= (c['body'] * 0.5):
+            pattern_name = "Bearish Hanging Man (Asılı Adam Ayı)"
+            pattern_type = "Bearish"
+            target_level = c['low'] + (c['low_shadow'] / 2) # Teyit: Asılı adamın alt gölgesinin orta noktası [Sayfa 80]
+            stop_level = max(p1['high'], c['high']) # Stop: Son iki barın yüksek değerlerinden büyük olanı [Sayfa 80]
+
+        # --- 6. BEARISH BELT HOLD (Belden Tutma Ayı) [Sayfa 16] ---
+        # Koşul: Açılış değeri en yüksek seviye, trende ters sert düşüş mumu [Sayfa 81].
+        elif c['close'] > c['ma20'] and c['dir'] == 'black' and c['high_shadow'] <= (c['body'] * 0.05):
+            pattern_name = "Bearish Belt Hold (Belden Tutma Ayı)"
+            pattern_type = "Bearish"
+            target_level = c['close'] # Teyit: Barın kapanış fiyatı [Sayfa 83]
+            stop_level = c['high'] # Stop: Barın gördüğü en yüksek fiyat [Sayfa 83]
+
+        # --- 7. BEARISH ENGULFING (Yutan Ayı) [Sayfa 17] ---
+        # Koşul: Beyaz gövdeyi tamamen yutan büyük siyah gövde [Sayfa 85].
+        elif p1['dir'] == 'white' and c['dir'] == 'black' and c['open'] >= p1['close'] and c['close'] < p1['open']:
+            pattern_name = "Bearish Engulfing (Yutan Ayı)"
+            pattern_type = "Bearish"
+            target_level = c['close'] # Teyit: Son barın kapanış fiyatı [Sayfa 86]
+            stop_level = c['high'] # Stop: Son barın gördüğü en yüksek [Sayfa 86]
+
+        # --- 8. BEARISH HARAMI (Hamile Ayı) [Sayfa 17] ---
+        # Koşul: Beyaz gövdenin içinde kalan küçük siyah gövde [Sayfa 87].
+        elif p1['dir'] == 'white' and c['dir'] == 'black' and c['open'] < p1['close'] and c['close'] > p1['open'] and c['body'] < p1['body']:
+            pattern_name = "Bearish Harami (Hamile Ayı)"
+            pattern_type = "Bearish"
+            p1_mid = p1['open'] + ((p1['close'] - p1['open']) / 2)
+            target_level = min(c['close'], p1_mid) # Teyit: İkinci kapanış ile ilk gövde orta noktasından düşük olanı [Sayfa 88]
+            stop_level = max(p1['high'], c['high']) # Stop: İki barın yükseklerinden daha yüksek olanı [Sayfa 89]
+
+        # --- 9. BEARISH SHOOTING STAR (Kayan Yıldız Ayı) [Sayfa 18] ---
+        # Koşul: Uzun üst gölge, altta küçük gövde [Sayfa 96].
+        elif c['close'] > c['ma20'] and c['high_shadow'] >= (c['body'] * 2) and c['low_shadow'] <= (c['body'] * 0.5):
+            pattern_name = "Bearish Shooting Star (Kayan Yıldız Ayı)"
+            pattern_type = "Bearish"
+            target_level = min(c['open'], c['close']) # Teyit: Ters çekiç gövdesinin alt çizgisi [Sayfa 97]
+            stop_level = c['high'] # Stop: Son barın gördüğü en yüksek [Sayfa 97]
+
+        # --- MATRIKS YAŞAM DÖNGÜSÜ KONTROLÜ (CONFIRM BAR COUNT) --- [Sayfa 119 - 124]
         if pattern_name:
-            [span_17](start_span)status = "Not Confirmed" # Varsayılan[span_17](end_span)
-            confirmed_at_bar = None
+            status = "Not Confirmed" # Başlangıç durumu [Sayfa 124]
             
-            # [span_18](start_span)Sonraki barları tara (Confirm Bar Count mantığı)[span_18](end_span)
-            for check_idx in range(trigger_idx + 1, trigger_idx + 1 + confirm_bars):
-                if check_idx >= len(df):
+            # Belirlenen periyot kadar ileriye bakılarak teyit/stop durum kontrolü [Sayfa 123]
+            for next_idx in range(i + 1, i + 1 + confirm_bar_count):
+                if next_idx >= len(df):
                     break
-                future_bar = df.iloc[check_idx]
+                future_mum = df.iloc[next_idx]
                 
                 if pattern_type == "Bullish":
-                    # [span_19](start_span)Boğa için: Kapanış teyit seviyesini yukarı kırmalı[span_19](end_span)
-                    if status == "Not Confirmed" and future_bar['close'] > target_level:
-                        [span_20](start_span)status = "Confirmed"[span_20](end_span)
-                        confirmed_at_bar = check_idx
-                    # [span_21](start_span)Onaylandıktan sonra stop patladı mı?[span_21](end_span)
-                    if status == "Confirmed" and future_bar['close'] < stop_level:
-                        [span_22](start_span)status = "Confirmed & Fail"[span_22](end_span)
+                    # Kapanış değeri teyit seviyesini yukarı aşmalı [Sayfa 124, 130]
+                    if status == "Not Confirmed" and future_mum['close'] > target_level:
+                        status = "Confirmed"
+                    # Önce teyit alıp sonra stop seviyesinin altına sarkarsa [Sayfa 134]
+                    if status == "Confirmed" and future_mum['close'] < stop_level:
+                        status = "Confirmed & Fail"
                         break
                         
                 elif pattern_type == "Bearish":
-                    # [span_23](start_span)Ayı için: Kapanış teyit seviyesini aşağı kırmalı[span_23](end_span)
-                    if status == "Not Confirmed" and future_bar['close'] < target_level:
+                    # Kapanış değeri teyit seviyesini aşağı kırmalı [Sayfa 124]
+                    if status == "Not Confirmed" and future_mum['close'] < target_level:
                         status = "Confirmed"
-                        confirmed_at_bar = check_idx
-                    # Onaylandıktan sonra stop patladı mı?
-                    if status == "Confirmed" and future_bar['close'] > stop_level:
+                    # Önce teyit alıp sonra stop seviyesinin üzerine taşarsa
+                    if status == "Confirmed" and future_mum['close'] > stop_level:
                         status = "Confirmed & Fail"
                         break
 
-            # Sadece listelenebilir anlamlı durumları ekle (Web arayüzü kalabalık olmasın diye en son durumları alıyoruz)
             results.append({
+                "time": pd.to_datetime(c['open_time'], unit='ms').strftime('%Y-%m-%d %H:%M'),
                 "pattern": pattern_name,
                 "type": pattern_type,
-                "time": pd.to_datetime(c1['open_time'], unit='ms').strftime('%Y-%m-%d %H:%M'),
-                "status": status,
-                "trigger_price": c1['close']
+                "trigger_price": c['close'],
+                "status": status
             })
 
-    # Son tespit edilenleri ters kronolojik sırada gönder
+    # Son tespit edilenleri en yeni üste gelecek şekilde sırala
     return results[::-1][:10]
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/scan', pd_methods=['POST'])
+@app.route('/api/scan', methods=['POST'])
 def scan():
-    req_data = request.get_json()
+    req_data = request.get_json() or {}
     symbol = req_data.get('symbol', 'BTCUSDT')
-    interval = req_data.get('interval', '15m')
+    interval = req_data.get('interval', '4h')
     
     df = get_binance_klines(symbol, interval, limit=150)
     if df is None:
-        return jsonify({"success": False, "message": "Veri çekilemedi. Sembolü kontrol edin."})
+        return jsonify({"success": False, "message": "Binance veri bağlantı hatası."})
         
-    analysis = analyze_patterns(df)
+    analysis = analyze_patterns_pure_math(df, confirm_bar_count=3)
     
-    # Projeksiyon yorumu (1-2 Günlük tahmin metni oluşturma)
-    projection = "Yeterli formasyon onayı bulunmuyor. Yatay seyir beklenebilir."
+    projection = "Aktif sinyal doğrulaması yok. Yatay konsolidasyon beklenebilir."
     if analysis:
         latest = analysis[0]
         if latest['status'] == "Confirmed":
-            if latest['type'] == "Bullish":
-                projection = f"Son doğrulanan {latest['pattern']} formasyonuna göre önümüzdeki 1-2 gün boyunca YUKARI yönlü hareket olasılığı yüksektir."
-            else:
-                projection = f"Son doğrulanan {latest['pattern']} formasyonuna göre önümüzdeki 1-2 gün boyunca AŞAĞI yönlü baskı olasılığı yüksektir."
+            direction_str = "YUKARI (Yükseliş)" if latest['type'] == "Bullish" else "AŞAĞI (Düşüş)"
+            projection = f"Son doğrulanan '{latest['pattern']}' yapısı gereği, önümüzdeki 1-2 gün boyunca fiyatın {direction_str} yönlü ilerlemesi matematiksel olarak desteklenmektedir."
         elif latest['status'] == "Confirmed & Fail":
-            projection = "Son formasyon onaylandıktan sonra başarısızlığa (Stop-loss) uğramış. [span_24](start_span)Piyasa yön değiştirebilir."[span_24](end_span)
+            projection = f"Son tespit edilen {latest['pattern']} yapısı teyit edilmesine rağmen stop seviyesini ihlal ederek başarısız (Fail) olmuştur. Güçlü ters trend oluşabilir."
 
     return jsonify({
         "success": True,
