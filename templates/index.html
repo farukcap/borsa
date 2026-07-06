@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kripto Mum Formasyon Tarayıcı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #121214; color: #e4e6eb; }
+        .card { background-color: #1e1e24; border: 1px solid #2d2d35; color: #fff; }
+        .badge-bullish { background-color: #26a69a; }
+        .badge-bearish { background-color: #ef5350; }
+        .status-confirmed { color: #26a69a; font-weight: bold; }
+        .status-fail { color: #ef5350; font-weight: bold; }
+        .status-not { color: #ffb300; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-warning">Crypto Pattern AI Predictor</h1>
+        <p class="text-muted">Matriks Mum Formasyon Yaşam Döngüsü Analiz Algoritması</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card p-4 shadow">
+                <h5 class="card-title mb-4 text-warning">Analiz Ayarları</h5>
+                <div class="mb-3">
+                    <label class="form-label">Kripto Çifti (Binance)</label>
+                    <input type="text" id="symbol" class="form-control bg-dark text-white border-secondary" value="BTCUSDT" placeholder="Örn: BTCUSDT, ETHUSDT">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Zaman Dilimi</label>
+                    <select id="interval" class="form-select bg-dark text-white border-secondary">
+                        <option value="15m">15 Dakika (Kısa Vade)</option>
+                        <option value="4h" selected>4 Saat (Orta Vade)</option>
+                    </select>
+                </div>
+                <button onclick="startAnalysis()" class="btn btn-warning w-100 fw-bold">Formasyonları Tara & Tahmin Et</button>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card p-4 mb-4 border-warning shadow">
+                <h5 class="text-warning mb-2">🔮 1-2 Günlük Fiyat Hareketi Projeksiyonu</h5>
+                <p id="projection-text" class="fs-5 text-light">Lütfen analiz başlatın...</p>
+            </div>
+
+            <div class="card p-4 shadow">
+                <h5 class="mb-3">Bulunan Son Formasyonlar (Maks 10)</h5>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Zaman</th>
+                                <th>Formasyon</th>
+                                <th>Tip</th>
+                                <th>Tetik Fiyatı</th>
+                                <th>Durum (Status)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pattern-table-body">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">Veri yok. Analiz butonuna tıklayın.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function startAnalysis() {
+    const symbol = document.getElementById('symbol').value;
+    const interval = document.getElementById('interval').value;
+    const tbody = document.getElementById('pattern-table-body');
+    const projText = document.getElementById('projection-text');
+
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-warning">Analiz ediliyor, lütfen bekleyin...</td></tr>`;
+    projText.innerHTML = "Veriler hesaplanıyor...";
+
+    fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: symbol, interval: interval })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(!data.success) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${data.message}</td></tr>`;
+            return;
+        }
+
+        projText.innerText = data.projection;
+        tbody.innerHTML = "";
+
+        if(data.patterns.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Bu zaman diliminde onay bekleyen formasyon bulunamadı.</td></tr>`;
+            return;
+        }
+
+        data.patterns.forEach(p => {
+            let typeBadge = p.type === 'Bullish' ? `<span class="badge badge-bullish">Boğa</span>` : `<span class="badge badge-bearish">Ayı</span>`;
+            let statusClass = 'text-muted';
+            if(p.status === 'Confirmed') statusClass = 'status-confirmed';
+            if(p.status === 'Confirmed & Fail') statusClass = 'status-fail';
+            if(p.status === 'Not Confirmed') statusClass = 'status-not';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${p.time}</td>
+                    <td>${p.pattern}</td>
+                    <td>${typeBadge}</td>
+                    <td>${p.trigger_price}</td>
+                    <td class="${statusClass}">${p.status}</td>
+                </tr>
+            `;
+        });
+    })
+    .catch(err => {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Bağlantı hatası gerçekleşti.</td></tr>`;
+    });
+}
+</script>
+</body>
+</html>
